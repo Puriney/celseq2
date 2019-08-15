@@ -37,6 +37,9 @@ def plotly_scatter(x, y, mask_by=None, hover_text=None,
         width=600)
 
     fig = go.Figure(data=trace, layout=layout)
+    # ST's y should be reversed to match the H&E image
+    fig.layout.yaxis.autorange = 'reversed'
+
     return fig
 
 
@@ -184,22 +187,28 @@ def plotly_qc_st(fpath, saveto, sep='\t', name=''):
     if not name:
         name = base_name(fpath)
 
-    ST = pd.read_csv(fpath, sep=sep)
+    ST = pd.read_csv(fpath, sep=sep, index_col=0)
     print_logger(('ST UMI-count matrix has '
                   '{} spots x {} genes').format(ST.shape[0], ST.shape[1]))
 
-    ST_total_UMIs = ST.iloc[:, 2:].sum(axis=1)
-    ST_detected_genes = (ST.iloc[:, 2:] > 0).sum(axis=1)
+    ST_total_UMIs = ST.sum(axis=1)
+    ST_detected_genes = (ST > 0).sum(axis=1)
     mt_cols = [x for x in ST.columns if x.startswith(
         'mt-') or x.startswith('MT-')]
     if not mt_cols:
         ST_percent_mt = 0
     else:
         ST_percent_mt = ST[mt_cols].sum(axis=1) / ST_total_UMIs
-        ST_percent_mt.replace(np.inf, 0)
+        # ST_percent_mt = ST_percent_mt.replace(np.inf, 0)
+        # ST_percent_mt = ST_percent_mt.replace(np.NaN, 0)
+
+    st_xy = np.array(list(map(lambda xy: xy.strip().split('x'), ST.index)))
+
+    st_x = st_xy[:, 0].astype(np.int)
+    st_y = st_xy[:, 1].astype(np.int)
 
     ST_qc = pd.DataFrame(
-        dict(Row=ST.Row, Col=ST.Col,
+        dict(Row=st_x, Col=st_y,
              total_num_UMIs=ST_total_UMIs,
              num_detected_genes=ST_detected_genes,
              percent_mt=ST_percent_mt))
@@ -256,18 +265,21 @@ def main():
         'fpath', type=str, metavar='FILENAME',
         help=('file path (CSV/TSV) to the expression file with genes/features '
               'as rows and cells/samples on columns. '
-              'First column saves gene names.'))
+              'First column saves gene names.'
+              'If --st, it is the ST tsv format with spots (e.g., 10x34) as rows and genes as columns.'))
     parser.add_argument('saveto', type=str, metavar='FILENAME',
                         help='File path (html) to save the QC plots.')
     parser.add_argument('--name', type=str, metavar='STR', default='')
     parser.add_argument('--sep', type=str, default='\t',
                         help='File sep (default: \'\t\')')
-    parser.add_argument('--st', dest='is_st', action='store_true')
+    parser.add_argument('--st', dest='is_st', action='store_true',
+                        help='If the input fpath is ST file.')
     parser.set_defaults(is_st=False)
     args = parser.parse_args()
 
     if args.is_st:
-        plotly_qc_st(args.fpath, args.saveto, args.sep, args.name)
+        print_logger('Read the ST expression.')
+        plotly_qc_st(args.fpath, args.saveto, '\t', args.name)
     else:
         plotly_qc(args.fpath, args.saveto, args.sep, args.name)
     print_logger('Generate QC for {}'.format(args.fpath))

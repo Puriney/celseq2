@@ -38,7 +38,7 @@ def celseq2stpipeline(celseq2_fpath, spatial_map, out,
     genes = map(lambda x: x.replace(' ', '_'), expr_valid.index.values)
     colnames = expr_valid.columns.values
     # fhout.write('{}\t{}\n'.format('', '\t'.join(genes)))  # header
-    fhout.write('{}\t{}\t{}\n'.format('X', 'Y', '\t'.join(genes)))  # header
+    fhout.write('\t{}\n'.format('\t'.join(genes)))  # header
 
     for colname in colnames:
         tmp = colname.replace('.', '-') # BC-1-ATGC or ATGC
@@ -47,14 +47,14 @@ def celseq2stpipeline(celseq2_fpath, spatial_map, out,
         spot_xy = dict_spatial_seq2xy.get(spot_seq, None)
         if not spot_xy:
             continue
-        # spot_xy = 'x'.join(map(str, spot_xy))
-        # fhout.write('{}\t{}\n'.format(
-        #     spot_xy,
-        #     '\t'.join(map(str, spot_expr))))
-        spot_r, spot_c = spot_xy
-        fhout.write('{}\t{}\t{}\n'.format(
-            spot_r, spot_c,
+        spot_xy = 'x'.join(map(str, spot_xy))
+        fhout.write('{}\t{}\n'.format(
+            spot_xy,
             '\t'.join(map(str, spot_expr))))
+        # spot_x, spot_y = spot_xy
+        # fhout.write('{}\t{}\t{}\n'.format(
+        #     spot_x, spot_y,
+        #     '\t'.join(map(str, spot_expr))))
 
     fhout.close()
 
